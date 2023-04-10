@@ -1,0 +1,53 @@
+version: '3'
+services:
+  db:
+    image: mysql:5.7
+    container_name: db
+    restart: always
+    tty: true
+    ports:
+      - "3306:3306" 
+    volumes:
+      - ./mysql:/var/lib/mysql
+    environment:
+      - MYSQL_DATABASE=dbProxyReverso
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_ALLOW_EMPTY_PASSWORD=true
+    networks:
+      - networkProxyReverso
+
+  node:
+    build: 
+      context: ./node
+      dockerfile: Dockerfile
+    image: peacevan/node
+    container_name: node
+    ports:
+      - "3000:3000" 
+    volumes:
+    - ./node:/usr/src/app
+    - /usr/src/app/node_modules
+    tty: true
+    depends_on:
+      - db
+    entrypoint: dockerize -wait tcp://db:3306 -timeout 20s docker-entrypoint.sh node index.js
+    networks:
+      - networkProxyReverso
+
+  nginx:
+    build: 
+      context: ./nginx
+      dockerfile: Dockerfile
+    image: peacevan/nginx
+    container_name: nginx
+    ports:
+      - "8080:80"
+    depends_on:
+      - node
+    networks:
+      - networkProxyReverso      
+
+networks:
+  networkProxyReverso:
+    name: networkProxyReverso
+    driver: bridge
